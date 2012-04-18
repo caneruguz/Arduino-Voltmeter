@@ -1,0 +1,5 @@
+This project is a version of the Arduino Grapher using Scott Schiller's ArduinoJS. It aims to provide a user friendly Voltmeter that can be used with the Arduino to digitally measure volt. The voltage is shown in a SVG gauge and graphed on a flot line chart. 
+
+This code is work in progress. Some immediate to-do's are:
+- Fix SVG needle draw
+- Troubleshoot the new SVG draw code which dynamically draws the SVG needle 
