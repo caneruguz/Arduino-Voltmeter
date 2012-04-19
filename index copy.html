@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Arduino Voltmeter</title>
+
+<link rel="stylesheet" media="screen" href="style.css" />
+
+
+<!-- core library -->
+<script src="script/arduino.js"></script>
+<script type="text/javascript" src="http://www.google.com/jsapi"></script>
+<script type="text/javascript">google.load("jquery", "1");</script>
+<script language="javascript" type="text/javascript" src="flot/jquery.flot.js"></script>
+
+<script type="text/javascript">
+
+// ===== Initializing arduinojs ======
+
+arduino.config.flash.url = 'swf/arduinojs.swf';
+
+arduino.config.debug.enabled = true; // useful for connection setup/troubleshooting
+
+arduino.config.debug.flash.showUI = true; // helps when fixing flash/onload() problems
+
+arduino.onload = function() {
+  // Flash has loaded, now we're ready to connect to the proxy..
+};
+
+
+// ===== Connecting to Arduino and Drawing the Gauge ======						
+
+function startArduino(){
+
+			$("#connector").css("color","yellow"); // Turns the button text color yellow while connection is happening
+			
+			arduino.connect('127.0.0.1', '5331', function() { 		
+				// Connect to arduino 
+			});
+			
+			
+			// Drawing the SVG
+			var globalPointOnCircle = 0.0;
+			var offsetX = 200.0; 
+			var offsetY = 100.0;
+			var outerR	= 400.0; 
+			var innerR 	= 110.0;
+			var theta	= 0.848; // That's actually half the arc length  
+			var outerArcWidth = 2.0 * outerR * Math.sin(theta); 
+			var innerArcWidth = 2.0 * innerR * Math.sin(theta);
+			var circleCenterX = offsetX + ( outerR*Math.sin(theta) ); 
+			var circleCenterY = offsetY + ( outerR*Math.cos(theta) );
+			var innerStartX = offsetX + ( (outerR-innerR) * Math.sin(theta) );
+			var innerStartY = offsetY + ( (outerR - innerR) * Math.cos(theta)) ; 
+			
+			console.log("offsetX: " + offsetX);  
+			console.log("offsetY: " + offsetY);
+			console.log("outerR: " + outerR); 
+			console.log("innerR: " + innerR);
+			console.log("theta: 	" + theta);   
+			console.log("outerArcWidth: " + outerArcWidth);
+			console.log("innerArcWidth: " + innerArcWidth);
+			console.log("circleCenterX: " + circleCenterX);
+			console.log("circleCenterY: " + circleCenterY);   
+			console.log ("innerStartX: "  + innerStartX);
+			console.log("innerStartY: "	  + innerStartY);
+			
+			
+			function moveNeedle() {  // between 0.0 and 10.0
+		            var analog = arduino.getAnalogData(0)/1024;
+					analog = analog*10;
+					var rounded = Math.round(analog*100)/100;
+					if(rounded == null ){
+						rounded = 0; //We need this to draw the first instance of Voltmeter when Arduino data is not yet loaded. 
+					} 
+						
+					
+
+					$("#voltmeter").html(
+						
+							 " <svg id='meterSVGId' width='16cm' height='7cm' viewBox='0 0 1200 400' xmlns='http://www.w3.org/2000/svg' version='1.1'>"
+					               //way: 0=short-arc, 1=long-arc   direction: 0=CCW 1=CW          
+					               //                           ^   ^                              
+					               // move to: arc,rX,rY    ?   |   |  finish: (relative to start) 
+					 
+							+"	<path d='M"+ innerStartX + " " + innerStartY  +  " L " + offsetX + " "+ offsetY + "' stroke='blue' stroke-width='5'/><!-- left edge -->"
+							+"	<path d='M575 300 L 800 100' stroke='blue' stroke-width='5'/><!-- right edge -->           "
+					         +"<path id='voltMeterNeedleId' d='M 428 400 L 220 215' stroke='maroon' stroke-width='5'/><!-- stick -->"
+           					+"<text x='476' y='303' font-family='Verdana' font-size='35' fill='white' id='svgtext'>" + rounded + " </text>"
+           
+					
+					        +" </svg>"
+						
+					);
+		         }
+		        
+		        function tryIt(){
+		            // alert('trying it!');
+		            // alert($('#newValue').attr('value'))
+		            moveNeedle(parseFloat($('#newValue').attr('value')));
+		        }
+		        
+		        function debugNeedle(){
+		            // DEBUG:
+		            globalPointOnCircle += 0.1;
+		           moveNeedle(globalPointOnCircle);
+		        }
+		        
+			
+			function readData() {
+				
+				var a0 = arduino.getAnalogData(0);
+				
+				if (a0 == null){ // If there is no connection turn button text red. Add additional feedback options here
+					$("#connector").css("color","red");
+					a0 = 0;
+				} else { // If there is connection turn button to green. Add additional success messages here 
+					$("#connector").css("color","green");
+				}
+				console.log('Analog input 0 value: ' + a0); // This is just for the developer to see the values in console
+				
+				moveNeedle(); // Move the needle with live data
+		
+			}	
+ 		
+ 			var aInt = setInterval(readData, 100); // Live data from Arduino, change 100 to change measure intervals. 
+} 
+
+</script>
+<script type="text/javascript">
+
+// ===== Drawing the flot graph, this has separate interval ======	
+
+$(function () {
+	
+    // we use an inline data source in the example, usually data would
+    // be fetched from a server
+    var data = [], totalPoints = 200;
+    var allData = new Array;
+	var update;
+	var collectData;
+	var startgraph = false;
+	var pinSource = 'Analog-0';
+	var pinSplit = ['Analog', 0];
+	var pinNumber = pinSplit[1];
+	var graphInterval = 100;
+	
+		$("#pinSource").val(pinSource).change(function () {
+			pinSource = $("#pinSource").val(); 
+			pinSplit = pinSource.split("-");
+			pinNumber = parseInt(pinSplit[1]);
+	  });
+    
+    function collectData() {
+ 		if (data.length > 0)
+            	data = data.slice(1);
+           
+           
+           while (data.length < totalPoints) {
+			if (pinSplit[0] == 'Analog'){
+				 y = arduino.getAnalogData(pinNumber);
+				 
+			} else {
+				 y = arduino.getDigitalData(pinNumber);
+			}
+			
+			y = y/1024;
+			y = y*10;
+			y = Math.round(y*100)/100;
+           data.push(y);
+         }
+           
+            
+            allData.push(y);
+
+        // zip the generated y values with the x values
+        var res = [];
+        for (var i = 0; i < data.length; ++i) {
+            if (i > totalPoints) {
+            	res.shift();
+            }
+            res.push([i, data[i]]);
+            
+            }
+        return res;	
+    }
+    	
+
+    // setup control widget
+    var updateInterval = 100;
+    $("#updateInterval").val(updateInterval).change(function () {
+        var v = $(this).val();
+        if (v && !isNaN(+v)) {
+            updateInterval = +v;
+            if (updateInterval < 1)
+                updateInterval = 1;
+            if (updateInterval > 2000)
+                updateInterval = 2000;
+            $(this).val("" + updateInterval);
+        }
+    });
+
+		var minRange = 0;
+		var maxRange = 10;
+		// setup plot
+		    var options = {
+		        series: { shadowSize: 0, color: 7 }, // drawing is faster without shadows
+		        yaxis: { min: minRange, max: maxRange, tickSize: [2] },
+		        xaxis: { show: false },
+		        
+		    };
+		    
+	$("#timeout").click(function() {
+	  startgraph = false;
+	  $('#timeout').attr('disabled', 'disabled');
+	  	  $('#timein').removeAttr('disabled');
+	  
+	});
+	
+	$("#timein").click(function() {
+	  startgraph = true;
+	  $('#timein').attr('disabled', 'disabled');
+	  	  $('#timeout').removeAttr('disabled');
+	    update();
+	});
+
+    
+	var plot = $.plot($("#placeholder"), [ data ], options);   
+
+	function getData() {
+		plot.setData([ collectData() ]);
+		setTimeout(getData, updateInterval);
+		//console.log('update interval: ' + updateInterval);
+	}
+	
+  	    $("#graphInterval").val(graphInterval).change(function () {
+			if($("#graphInterval").val().length !== 0){
+						graphInterval = $("#graphInterval").val(); //Get graphInterval value from form		
+			}
+		});
+	
+    function update() {
+		plot = $.plot($("#placeholder"), [ collectData() ], options);
+        // since the axes don't change, we don't need to call plot.setupGrid()
+        	plot.draw();
+        if (startgraph == true) {
+        	setTimeout(update, graphInterval);
+        };
+       
+    }
+    getData();
+    update();
+});
+
+</script>
+
+</head>
+
+<body>
+
+<div class="content">
+	<div class="wrapper">
+	 	<h2 id="title">Arduino Voltmeter </h2>
+		
+		<div id="connectdiv"> 
+			<button id="connector" onclick="startArduino();">Connect</button> <!-- Button to connect -->
+		</div>
+		
+		<div id="voltmeter"> 
+				<!-- SVG will be drawn here -->
+		</div>   
+
+    	<h4>Volt Change over Time</h4>
+
+   		<div id="placeholder" style="width:600px;height:120px;">
+   				<!-- Flot graph will be drawn here -->
+   		</div>
+
+		<p>
+		  <button id="timein">Start graphing</button>
+		    <button id="timeout">Stop graphing</button>
+		    Choose Source Pin
+		    <select id="pinSource">
+				<option value="Analog-0">Analog-0</option>
+				<option value="Analog-1">Analog-1</option>
+				<option value="Analog-2">Analog-2</option>
+				<option value="Analog-3">Analog-3</option>
+				<option value="Analog-4">Analog-4</option>
+				<option value="Analog-5">Analog-5</option>
+				<option value="Digital-2">Digital-2</option>
+				<option value="Digital-3">Digital-3</option>
+				<option value="Digital-4">Digital-4</option>
+				<option value="Digital-5">Digital-5</option>
+				<option value="Digital-6">Digital-6</option>
+				<option value="Digital-7">Digital-7</option>
+				<option value="Digital-8">Digital-8</option>
+				<option value="Digital-9">Digital-9</option>
+				<option value="Digital-10">Digital-10</option>
+				<option value="Digital-11">Digital-11</option>
+				<option value="Digital-12">Digital-12</option>
+				<option value="Digital-13">Digital-13</option>
+		</select>
+		</p>  
+
+    	<p>This graph shows the change in the volt values read by your Arduino device. Start and stop it any time.</p>
+
+	</div>
+</div>
+
+</body>
+</html>
