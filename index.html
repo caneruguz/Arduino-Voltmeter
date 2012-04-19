@@ -31,6 +31,7 @@ arduino.onload = function() {
 
 function startArduino(){
 
+
 			$("#connector").css("color","yellow"); // Turns the button text color yellow while connection is happening
 			
 			arduino.connect('127.0.0.1', '5331', function() { 		
@@ -59,8 +60,6 @@ function startArduino(){
 					var myNeedleValue = (5.0 - rounded) * ((0.848) / 5.0);  // transform to radians
 					console.log("My needle value: " + myNeedleValue);
 					
-							// transform to radians
-					// var myNeedleValue = (5.0 - newNeedleValue) * (1.9 / 5.0); // transform to radians
 					var newSVG = "M";
 					// start with the bottom point of the line
 					var myNeedleXinner = midCircleX - (radiusInner * Math.sin(myNeedleValue));
@@ -78,6 +77,7 @@ function startArduino(){
 		            // alert('trying it!');
 		            // alert($('#newValue').attr('value'))
 		            moveNeedle(parseFloat($('#newValue').attr('value')));
+		            
 		        }
 		        
 		        function debugNeedle(){
@@ -111,7 +111,38 @@ function startArduino(){
 
 // ===== Drawing the flot graph, this has separate interval ======	
 
+// 			var midCircleX  = 500.0;
+// 			var midCircleY  = 365.0;
+// 			var radius      = 500.0;
+// 			var radiusInner = 120.0;
+// 			
+// 
+// var globalDebugRadian = 0.0;
+// 
+// function debugRedraw() {
+// 					var rounded = globalDebugRadian;
+// 					globalDebugRadian += .01;
+// 					var myNeedleValue = (5.0 - rounded) * ((0.848) / 5.0);  // transform to radians
+// 					console.log("My needle value: " + myNeedleValue);
+// 					
+// 					var newSVG = "M";
+// 					// start with the bottom point of the line
+// 					var myNeedleXinner = midCircleX - (radiusInner * Math.sin(myNeedleValue));
+// 					var myNeedleYinner = midCircleY - (radiusInner * Math.cos(myNeedleValue));
+// 					newSVG += ' ' + myNeedleXinner + ' ' + myNeedleYinner + 'L ';
+// 					// then the top
+// 					var myNeedleX = midCircleX - (radius * Math.sin(myNeedleValue));
+// 					var myNeedleY = midCircleY - (radius * Math.cos(myNeedleValue));
+// 					newSVG += myNeedleX + ' ' + myNeedleY;
+// 					$('#voltMeterNeedleId').attr('d',newSVG);
+// 
+// }
+
+
 $(function () {
+	
+//	setInterval(debugRedraw, 10);
+	
 	
     // we use an inline data source in the example, usually data would
     // be fetched from a server
@@ -248,11 +279,12 @@ $(function () {
 		
 		<div id="voltmeter"> 
 				<!-- SVG will be drawn here -->
-							<svg id='meterSVGId' width='16cm' height='7cm' viewBox='0 0 1200 400' xmlns='http://www.w3.org/2000/svg' version='1.1'>
-					         <path id='voltMeterNeedleId' d='M 420 297 L 168 30' stroke='maroon' stroke-width='5'/><!-- stick -->
+							<svg id='meterSVGId' width='16cm' height='10cm' viewBox='0 0 1200 400' xmlns='http://www.w3.org/2000/svg' version='1.1'>
+					         <path id='voltMeterNeedleId' d='M 420 297 L 168 30' stroke='maroon' stroke-width='7'/><!-- stick -->
 					         <text id="voltread" x="465" y="295" fill="white" font-size="50"> 0	</text> 
 					        </svg>
 		</div>   
+
 
     	<h4>Volt Change over Time</h4>
 
